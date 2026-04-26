@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+.github
+
+# Dependencies (will be installed fresh inside container)
+node_modules
+npm-debug.log
+
+# Environment files - NEVER bake into image
+.env
+.env.*
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts and logs
+*.log
+logs
+coverage
+.nyc_output
+
+# Docs - not needed at runtime
+README.md
+LICENSE
+docs
+
+# CI/CD assets - not needed inside the container
+chart
+Jenkinsfile
+.dockerignore
+Dockerfile

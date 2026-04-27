@@ -75,6 +75,24 @@ pipeline {
                 }
             }
         }
+        stage('Snyk SCA') {
+            steps {
+                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                    sh '''
+                        echo "=== Authenticating with Snyk ==="
+                        snyk auth $SNYK_TOKEN
+
+                        echo "=== Running Snyk dependency scan (informational mode) ==="
+                        snyk test --severity-threshold=high || true
+
+                        echo "=== Sending snapshot to Snyk dashboard ==="
+                        snyk monitor --project-name=shopping-cart || true
+
+                        echo "=== Snyk SCA complete ==="
+                    '''
+                }
+            }
+        }
     }
 
     post {

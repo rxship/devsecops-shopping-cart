@@ -48,6 +48,30 @@ pipeline {
                 '''
             }
         }
+    stage('SonarQube SAST') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('MySonarQube') {
+                        sh """
+                            echo "=== Running SonarQube scan ==="
+                            ${scannerHome}/bin/sonar-scanner \\
+                                -Dsonar.projectKey=${SONAR_PROJECT} \\
+                                -Dsonar.projectName=${SONAR_PROJECT} \\
+                                -Dsonar.projectVersion=${BUILD_NUMBER}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
     }
 
     post {

@@ -142,6 +142,47 @@ pipeline {
                 archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
             }
         }
+        stage('Push to ACR') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'azure-sp',
+                        usernameVariable: 'AZURE_CLIENT_ID',
+                        passwordVariable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh '''
+                        echo "=== Logging into Azure ==="
+                        az login --service-principal \
+                            -u $AZURE_CLIENT_ID \
+                            -p $AZURE_CLIENT_SECRET \
+                            --tenant $AZURE_TENANT_ID > /dev/null
+
+                        echo "=== Logging into ACR ==="
+                        az acr login --name $ACR_NAME
+
+                        echo "=== Pushing image with build tag ==="
+                        docker push $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+                        echo "=== Pushing image with latest tag ==="
+                        docker push $ACR_REGISTRY/$IMAGE_NAME:latest
+
+                        echo "=== Verifying image is in ACR ==="
+                        az acr repository show-tags \
+                            --name $ACR_NAME \
+                            --repository $IMAGE_NAME \
+                            --orderby time_desc \
+                            -o table
+                    '''
+                }
+            }
+            post {
+                always {
+                    sh 'az logout || true'
+                }
+            }
+        }
     }
 
     post {

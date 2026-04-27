@@ -23,6 +23,7 @@ pipeline {
                 sh 'echo "Tools available:"; which git node docker az kubectl helm trivy snyk sonar-scanner || true'
             }
         }
+
         stage('Checkout Code') {
             steps {
                 cleanWs()
@@ -31,6 +32,7 @@ pipeline {
                 sh 'echo "Current commit:"; git rev-parse --short HEAD'
             }
         }
+
         stage('Install Dependencies') {
             steps {
                 sh '''
@@ -48,7 +50,8 @@ pipeline {
                 '''
             }
         }
-    stage('SonarQube SAST') {
+
+        stage('SonarQube SAST') {
             steps {
                 script {
                     def scannerHome = tool 'SonarScanner'

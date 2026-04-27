@@ -107,6 +107,30 @@ pipeline {
                 '''
             }
         }
+        stage('Trivy Image Scan') {
+            steps {
+                sh '''
+                    echo "=== Running Trivy scan on built image ==="
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --ignore-unfixed \
+                        --no-progress \
+                        --format table \
+                        $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
+
+                    echo "=== Generating Trivy JSON report for archival ==="
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --format json \
+                        --output trivy-report.json \
+                        $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
+
+                    echo "=== Trivy scan complete ==="
+                    ls -la trivy-report.json || echo "No report file generated"
+                '''
+                archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
+            }
+        }
     }
 
     post {

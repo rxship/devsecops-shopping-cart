@@ -23,6 +23,14 @@ pipeline {
                 sh 'echo "Tools available:"; which git node docker az kubectl helm trivy snyk sonar-scanner || true'
             }
         }
+        stage('Checkout Code') {
+            steps {
+                cleanWs()
+                checkout scm
+                sh 'echo "Workspace contents:"; ls -la'
+                sh 'echo "Current commit:"; git rev-parse --short HEAD'
+            }
+        }
     }
 
     post {

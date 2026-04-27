@@ -1,0 +1,40 @@
+# Number of pods to run by default
+replicaCount: 2
+
+# Container image settings
+image:
+  repository: tangodown15.azurecr.io/shopping-cart
+  tag: "v1"
+  pullPolicy: IfNotPresent
+
+# Service config
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+# Ingress config (disabled for now)
+ingress:
+  enabled: false
+  className: ""
+  hosts:
+    - host: shopping.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Autoscaling (disabled for now)
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70

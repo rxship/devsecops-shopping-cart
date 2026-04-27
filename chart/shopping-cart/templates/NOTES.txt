@@ -1,0 +1,15 @@
+The {{ .Chart.Name }} application has been deployed.
+
+Release name: {{ .Release.Name }}
+Namespace:    {{ .Release.Namespace }}
+
+To check the pod status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+To check the service:
+  kubectl get svc -n {{ .Release.Namespace }} {{ include "shopping-cart.fullname" . }}
+
+To port-forward to your local machine and test:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "shopping-cart.fullname" . }} 8080:{{ .Values.service.port }}
+
+Then visit http://localhost:8080 in your browser.

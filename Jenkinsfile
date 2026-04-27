@@ -31,6 +31,23 @@ pipeline {
                 sh 'echo "Current commit:"; git rev-parse --short HEAD'
             }
         }
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    echo "=== Node version ==="
+                    node --version
+                    npm --version
+
+                    echo "=== Installing dependencies with npm ci ==="
+                    npm ci
+
+                    echo "=== Sanity check on installed deps ==="
+                    ls node_modules | head -20
+                    echo "Total packages installed:"
+                    ls node_modules | wc -l
+                '''
+            }
+        }
     }
 
     post {

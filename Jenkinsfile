@@ -93,6 +93,20 @@ pipeline {
                 }
             }
         }
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    echo "=== Building Docker image ==="
+                    docker build -t $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG .
+
+                    echo "=== Tagging as latest for convenience ==="
+                    docker tag $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG $ACR_REGISTRY/$IMAGE_NAME:latest
+
+                    echo "=== Image info ==="
+                    docker images $ACR_REGISTRY/$IMAGE_NAME --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
+                '''
+            }
+        }
     }
 
     post {

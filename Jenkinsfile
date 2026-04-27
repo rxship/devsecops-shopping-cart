@@ -1,139 +1,33 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'nodejs'
-    }
-
     environment {
-        ACR_NAME = 'luckyregistry11'
-        ACR_LOGIN_SERVER = 'luckyregistry11.azurecr.io'
-        IMAGE_NAME = 'nodejs-shpping-cart'
-        RESOURCE_GROUP = 'lucky'
-        AKS_CLUSTER = 'lucky-aks-cluster11'
-        HELM_RELEASE = 'nodejs-shopping-cart'
-        HELM_CHART_PATH = 'helm/nodejs-shopping-cart'
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        ACR_NAME       = 'tangodown15'
+        ACR_REGISTRY   = 'tangodown15.azurecr.io'
+        IMAGE_NAME     = 'shopping-cart'
+        IMAGE_TAG      = "${BUILD_NUMBER}"
+        AKS_RG         = 'learning-rg'
+        AKS_CLUSTER    = 'aks-learning'
+        K8S_NAMESPACE  = 'shopping-cart'
+        HELM_RELEASE   = 'shopping-cart'
+        HELM_CHART_DIR = './chart/shopping-cart'
+        SONAR_PROJECT  = 'shopping-cart'
     }
 
     stages {
-
-        stage('Checkout Code') {
+        stage('Sanity Check') {
             steps {
-                git branch: 'master', url: 'https://github.com/luckyncpl/nodejs-shopping-cart'
+                echo "Pipeline started for build #${BUILD_NUMBER}"
+                echo "Image will be: ${ACR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                sh 'echo "Running on:"; hostname'
+                sh 'echo "Tools available:"; which git node docker az kubectl helm trivy snyk sonar-scanner || true'
             }
         }
+    }
 
-        stage('Install Dependencies') {
-            steps {
-                sh '''
-                node -v
-                npm -v
-                npm install
-                '''
-            }
-        }
-
-        stage('SonarQube SAST Scan') {
-            steps {
-                script {
-                    def scannerHome = tool 'sonar-scanner'
-
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                        ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectKey=nodejs-shopping-cart_12345 \
-                        -Dsonar.projectName=nodejs-shopping-cart \
-                        -Dsonar.sources=. \
-                        -Dsonar.exclusions=node_modules/**,helm/**,data/** \
-                        -Dsonar.token=$SONAR_AUTH_TOKEN
-                        """
-                    }
-                }
-            }
-        }
-
-        stage('Snyk SCA Scan') {
-            steps {
-                withCredentials([string(credentialsId: 'SNYK_TOKEN', variable: 'SNYK_TOKEN')]) {
-                    sh '''
-                    npm install -g snyk
-                    snyk --version
-                    snyk auth $SNYK_TOKEN
-                    snyk test --severity-threshold=high || true
-                    snyk monitor || true
-                    '''
-                }
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh '''
-                docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                docker tag $IMAGE_NAME:$IMAGE_TAG $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
-                docker tag $IMAGE_NAME:$IMAGE_TAG $ACR_LOGIN_SERVER/$IMAGE_NAME:latest
-                '''
-            }
-        }
-
-        stage('Trivy Image Scan') {
-            steps {
-                sh '''
-                trivy image --severity HIGH,CRITICAL --exit-code 0 $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
-                '''
-            }
-        }
-
-        stage('Login to Azure & ACR') {
-            steps {
-                withCredentials([
-                    usernamePassword(credentialsId: 'azure-sp', usernameVariable: 'AZURE_APP_ID', passwordVariable: 'AZURE_PASSWORD'),
-                    string(credentialsId: 'azure-tenant', variable: 'AZURE_TENANT')
-                ]) {
-                    sh '''
-                    az login --service-principal -u $AZURE_APP_ID -p $AZURE_PASSWORD --tenant $AZURE_TENANT
-                    az acr login --name $ACR_NAME
-                    '''
-                }
-            }
-        }
-
-        stage('Push Image to ACR') {
-            steps {
-                sh '''
-                docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
-                docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:latest
-                '''
-            }
-        }
-
-        stage('Connect to AKS') {
-            steps {
-                sh '''
-                az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER --overwrite-existing
-                '''
-            }
-        }
-
-        stage('Helm Deploy to AKS') {
-            steps {
-                sh '''
-                helm upgrade --install $HELM_RELEASE $HELM_CHART_PATH \
-                --set image.repository=$ACR_LOGIN_SERVER/$IMAGE_NAME \
-                --set image.tag=$IMAGE_TAG
-                '''
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                sh '''
-                kubectl get pods
-                kubectl get svc
-                kubectl get hpa
-                '''
-            }
+    post {
+        always {
+            echo "Pipeline finished with status: ${currentBuild.currentResult}"
         }
     }
 }

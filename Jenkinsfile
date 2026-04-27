@@ -183,6 +183,52 @@ pipeline {
                 }
             }
         }
+        stage('Deploy to AKS') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'azure-sp',
+                        usernameVariable: 'AZURE_CLIENT_ID',
+                        passwordVariable: 'AZURE_CLIENT_SECRET'
+                    ),
+                    string(credentialsId: 'azure-tenant-id', variable: 'AZURE_TENANT_ID')
+                ]) {
+                    sh '''
+                        echo "=== Logging into Azure ==="
+                        az login --service-principal \
+                            -u $AZURE_CLIENT_ID \
+                            -p $AZURE_CLIENT_SECRET \
+                            --tenant $AZURE_TENANT_ID > /dev/null
+
+                        echo "=== Getting AKS credentials ==="
+                        az aks get-credentials \
+                            --resource-group $AKS_RG \
+                            --name $AKS_CLUSTER \
+                            --overwrite-existing
+
+                        echo "=== Verifying cluster connection ==="
+                        kubectl get nodes
+
+                        echo "=== Running helm upgrade --install ==="
+                        helm upgrade --install $HELM_RELEASE $HELM_CHART_DIR \
+                            --namespace $K8S_NAMESPACE \
+                            --create-namespace \
+                            --set image.tag=$IMAGE_TAG \
+                            --wait \
+                            --timeout 5m
+
+                        echo "=== Deployment complete - verifying ==="
+                        helm list -n $K8S_NAMESPACE
+                        kubectl get all -n $K8S_NAMESPACE
+                    '''
+                }
+            }
+            post {
+                always {
+                    sh 'az logout || true'
+                }
+            }
+        }
     }
 
     post {

@@ -111,12 +111,23 @@ pipeline {
             steps {
                 sh '''
                     echo "=== Running Trivy scan on built image ==="
+
+                    # Run Trivy. Exit code 0 = no issues at this severity.
+                    # Exit code 1 = issues found (which we expect for old codebase).
+                    # Other exit codes = real errors.
                     trivy image \
                         --severity HIGH,CRITICAL \
                         --ignore-unfixed \
                         --no-progress \
                         --format table \
-                        $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
+                        $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                    SCAN_EXIT=$?
+
+                    if [ $SCAN_EXIT -ne 0 ] && [ $SCAN_EXIT -ne 1 ]; then
+                        echo "ERROR: Trivy crashed (exit code $SCAN_EXIT). Failing the build."
+                        exit $SCAN_EXIT
+                    fi
+                    echo "Trivy scan completed (exit code $SCAN_EXIT). Continuing pipeline."
 
                     echo "=== Generating Trivy JSON report for archival ==="
                     trivy image \
@@ -126,7 +137,7 @@ pipeline {
                         $ACR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG || true
 
                     echo "=== Trivy scan complete ==="
-                    ls -la trivy-report.json || echo "No report file generated"
+                    ls -la trivy-report.json
                 '''
                 archiveArtifacts artifacts: 'trivy-report.json', allowEmptyArchive: true
             }
